@@ -24,6 +24,7 @@ namespace WebApiAutores
                 // Filtro de manera global
                 //opciones.Filters.Add(typeof(FiltroDeExcepcion));
             }).AddJsonOptions(x => x.JsonSerializerOptions.ReferenceHandler = ReferenceHandler.IgnoreCycles)
+            .AddNewtonsoftJson()
             ;
 
             services.AddDbContext<ApplicationDbContext>(options =>
@@ -44,7 +45,8 @@ namespace WebApiAutores
 
             // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
             services.AddEndpointsApiExplorer();
-            services.AddSwaggerGen(c => {
+            services.AddSwaggerGen(c =>
+            {
                 c.SwaggerDoc("v1", new OpenApiInfo { Title = "WebAPIAutores", Version = "v1" });
             });
             services.AddAutoMapper(typeof(Startup));
@@ -61,13 +63,14 @@ namespace WebApiAutores
             // middleware para guardar todas las respuestas
             app.LoguearRespuestaHTTP();
 
-           
+
             // Configure the HTTP request pipeline.
             if (env.IsDevelopment())
             {
-                app.UseSwagger();
-                app.UseSwaggerUI();
+                app.UseDeveloperExceptionPage();
             }
+            app.UseSwagger();
+            app.UseSwaggerUI();
 
             app.UseHttpsRedirection();
             app.UseRouting();

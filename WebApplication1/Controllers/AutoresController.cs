@@ -12,21 +12,29 @@ namespace WebApiAutores.Controllers
     [Route("api/autores")]
     public class AutoresController : ControllerBase
     {
-        private readonly ApplicationDbContext _context;
+        private readonly ApplicationDbContext context;
         private readonly IMapper mapper;
+        private readonly IConfiguration configuration;
 
-        public AutoresController(ApplicationDbContext context, IMapper mapper)
+        public AutoresController(ApplicationDbContext context, IMapper mapper, IConfiguration configuration)
         {
-            _context = context;
+            this.context = context;
             this.mapper = mapper;
+            this.configuration = configuration;
         }
 
+        [HttpGet("configuraciones")]
+        public ActionResult<string> ObtenerConfiguracion()
+        {
+            return configuration["apellido"];
+            //return configuration["connectionStrings:defaultConnection"];
+        }
 
         [HttpGet]
         //[Authorize]
         public async Task<ActionResult<List<AutorDTO>>> Get()
         {
-            var autores = await _context.Autores
+            var autores = await context.Autores
                  .ToListAsync();
 
             return mapper.Map<List<AutorDTO>>(autores);
@@ -35,22 +43,24 @@ namespace WebApiAutores.Controllers
 
         //[HttpGet("{id:int}/{param2?}")] el ? es para marcarlo como opcional
         //[HttpGet("{id:int}/{param2=persona}")] = para asignar un default
-        [HttpGet("{id:int}")]
-        public async Task<ActionResult<AutorDTO>> Get(int id)
+        [HttpGet("{id:int}", Name = "obtenerAutor")]
+        public async Task<ActionResult<AutorDTOConLibros>> Get(int id)
         {
-            var autor = await _context.Autores
+            var autor = await context.Autores
+                .Include(autorLibroDB => autorLibroDB.AutoresLibros)
+                .ThenInclude(autorDB => autorDB.Libro)
                 .FirstOrDefaultAsync(autorBd => autorBd.Id == id);
 
             if (autor == null)
                 return NotFound();
 
-            return mapper.Map<AutorDTO>(autor);
+            return mapper.Map<AutorDTOConLibros>(autor);
         }
 
         [HttpGet("{nombre}")]
-        public async Task<ActionResult<List<AutorDTO>>> Get([FromRoute]string nombre)
+        public async Task<ActionResult<List<AutorDTO>>> Get([FromRoute] string nombre)
         {
-            var autores = await _context.Autores
+            var autores = await context.Autores
                 .Where(x => x.Nombre.Contains(nombre))
                 .ToListAsync();
 
@@ -58,45 +68,48 @@ namespace WebApiAutores.Controllers
         }
 
         [HttpPost]
-
-        public async Task<ActionResult> Post([FromBody]AutorCreacionDTO autroCreacionDTO)
+        public async Task<ActionResult> Post([FromBody] AutorCreacionDTO autroCreacionDTO)
         {
-            var existeAutorConElMismoNombre =await _context.Autores.AnyAsync(x => x.Nombre == autroCreacionDTO.Nombre);
-            if(existeAutorConElMismoNombre)
+            var existeAutorConElMismoNombre = await context.Autores.AnyAsync(x => x.Nombre == autroCreacionDTO.Nombre);
+            if (existeAutorConElMismoNombre)
             {
                 return BadRequest($"Ya existe un autor con el nombre {autroCreacionDTO.Nombre}");
             }
 
             var autor = mapper.Map<Autor>(autroCreacionDTO);
-            _context.Add(autor);
+            context.Add(autor);
 
-            await _context.SaveChangesAsync();
-            return Ok();
+            await context.SaveChangesAsync();
+
+            var autorDTO = mapper.Map<AutorDTO>(autor);
+            return CreatedAtRoute("obtenerAutor", new { id = autor.Id }, autorDTO);
         }
 
         [HttpPut("{id:int}")]
-        public async Task<ActionResult> Put(Autor autor, int id)
+        public async Task<ActionResult> Put(AutorCreacionDTO autorCreacionDto, int id)
         {
-            if (autor.Id != id)
-            {
-                return BadRequest("El id del autor no coincide con el id de la URL");
-            }
-            _context.Update(autor);
-            await _context.SaveChangesAsync();
+            var existe = await context.Autores.AnyAsync(x => x.Id == id);
+            if (!existe)
+                return NotFound();
+            var autor = mapper.Map<Autor>(autorCreacionDto);
+            autor.Id = id;
 
-            return Ok();
+            context.Update(autorCreacionDto);
+            await context.SaveChangesAsync();
+
+            return NoContent();
         }
 
         [HttpDelete("{id:int}")]
         public async Task<ActionResult> Delete(int id)
         {
-            var existe = await _context.Autores.AnyAsync(x => x.Id == id);
+            var existe = await context.Autores.AnyAsync(x => x.Id == id);
             if (!existe)
             {
                 return NotFound();
             }
-            _context.Remove(new Autor() { Id = id });
-            await _context.SaveChangesAsync();
+            context.Remove(new Autor() { Id = id });
+            await context.SaveChangesAsync();
             return Ok();
         }
     }
