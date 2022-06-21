@@ -1,9 +1,10 @@
-﻿using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using WebApiAutores.Entidades;
 
 namespace WebApiAutores
 {
-    public class ApplicationDbContext : DbContext
+    public class ApplicationDbContext : IdentityDbContext
     {
         public ApplicationDbContext(DbContextOptions options) : base(options)
         {
@@ -11,7 +12,9 @@ namespace WebApiAutores
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
+            // necesario para usar Identity
             base.OnModelCreating(modelBuilder);
+
             modelBuilder.Entity<AutorLibro>()
                 .HasKey(al => new { al.AutorId, al.LibroId });
         }

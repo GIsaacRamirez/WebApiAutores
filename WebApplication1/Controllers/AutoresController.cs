@@ -1,4 +1,5 @@
 ﻿using AutoMapper;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -23,15 +24,15 @@ namespace WebApiAutores.Controllers
             this.configuration = configuration;
         }
 
-        [HttpGet("configuraciones")]
-        public ActionResult<string> ObtenerConfiguracion()
-        {
-            return configuration["apellido"];
-            //return configuration["connectionStrings:defaultConnection"];
-        }
+        //[HttpGet("configuraciones")]
+        //public ActionResult<string> ObtenerConfiguracion()
+        //{
+        //    return configuration["apellido"];
+        //    //return configuration["connectionStrings:defaultConnection"];
+        //}
 
         [HttpGet]
-        //[Authorize]
+        [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
         public async Task<ActionResult<List<AutorDTO>>> Get()
         {
             var autores = await context.Autores
