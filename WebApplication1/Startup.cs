@@ -3,9 +3,11 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
+using System.IdentityModel.Tokens.Jwt;
 using System.Text;
 using System.Text.Json.Serialization;
 using WebApiAutores.Middlewares;
+using WebApiAutores.Servicios;
 
 namespace WebApiAutores
 {
@@ -13,6 +15,7 @@ namespace WebApiAutores
     {
         public Startup(IConfiguration configuration)
         {
+            JwtSecurityTokenHandler.DefaultInboundClaimTypeMap.Clear();
             Configuration = configuration;
         }
 
@@ -50,28 +53,27 @@ namespace WebApiAutores
                     ValidateAudience = false,
                     ValidateLifetime = true,
                     ValidateIssuerSigningKey = true,
-                    IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(Configuration["llavejwt"])),
-                    ClockSkew = TimeSpan.Zero,
+                    IssuerSigningKey = new SymmetricSecurityKey(
+                        Encoding.UTF8.GetBytes(Configuration["llavejwt"])),
+                    ClockSkew = TimeSpan.Zero
                 });
             //services.AddResponseCaching();
 
             // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
-            services.AddEndpointsApiExplorer();
+            //services.AddEndpointsApiExplorer();
             services.AddSwaggerGen(c =>
             {
                 c.SwaggerDoc("v1", new OpenApiInfo { Title = "WebAPIAutores", Version = "v1" });
 
-                // configuracion para usar jwt
                 c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
                 {
-                    Name = "Autorization",
+                    Name = "Authorization",
                     Type = SecuritySchemeType.ApiKey,
                     Scheme = "Bearer",
                     BearerFormat = "JWT",
                     In = ParameterLocation.Header
                 });
 
-                // configuracion para usar jwt
                 c.AddSecurityRequirement(new OpenApiSecurityRequirement
                 {
                     {
@@ -82,18 +84,50 @@ namespace WebApiAutores
                                 Type = ReferenceType.SecurityScheme,
                                 Id = "Bearer"
                             }
-
                         },
-                        new string[]{ }
+                        Array.Empty<string>()
                     }
                 });
+
             });
+
             services.AddAutoMapper(typeof(Startup));
 
             services.AddIdentity<IdentityUser, IdentityRole>()
                 .AddEntityFrameworkStores<ApplicationDbContext>()
                 .AddDefaultTokenProviders()
                 ;
+
+            services.AddAuthorization(opciones =>
+            {
+                opciones.AddPolicy("EsAdmin", politica => politica.RequireClaim("esAdmin"));
+            });
+            services.AddDataProtection();
+            //services.AddTransient<HashService>();
+
+
+            // activar cors
+            services.AddCors(opciones =>
+            {
+                opciones.AddDefaultPolicy(builder =>
+                {
+                    // permitir peticiones desde url
+                    builder.WithOrigins("https://www.apirequest.io").AllowAnyMethod().AllowAnyHeader()
+                    // exponer cabeceras
+                    // .WithExposedHeaders()
+                    ;
+                });
+            });
+
+            services.AddAuthorization(opciones =>
+            {
+                opciones.AddPolicy("EsAdmin", politica => politica.RequireClaim("esAdmin"));
+            });
+
+            // agregar encriptacion
+            services.AddDataProtection();
+
+            services.AddTransient<HashService>();
         }
 
 
